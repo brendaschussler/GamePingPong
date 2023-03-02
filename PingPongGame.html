@@ -24,6 +24,7 @@
         const canvasEl = document.querySelector("canvas"); //CRIA ELEMENTO 
         const canvasCtx = canvasEl.getContext("2d"); //CONTEXTO SUPORTA 2D E 3D
         const gapX = 10;
+        const mouse = { x: 0, y: 0 };
 
         //usar POO = OBJETOS 
 
@@ -54,10 +55,15 @@
             y: 100,
             largura: 15,
             altura: 200,
+            _move: function () { //acompanha o mouse 
+                this.y = mouse.y - this.altura / 2 //so movimenta em y, e quero que o mouse acompanhe no meio da raquete
+            },
             desenho: function () {
                 //do lado esquerdo 
                 canvasCtx.fillStyle = "ffffff";
                 canvasCtx.fillRect(this.x, this.y, this.largura, this.altura);
+
+                this._move()
             }
         }
 
@@ -66,9 +72,22 @@
             altura: 200,
             x: campo.largura - raqueteEsq.largura - gapX,
             y: 100,
+            velocidade: 9,
+            speedUp: function () {
+                this.velocidade += 0.2
+            },
+            _move: function () { //acompanha a bolinha
+                if (this.y + this.altura / 2 < bola.y + bola.raio) {
+                    this.y += this.velocidade
+                } else {
+                    this.y -= this.velocidade
+                }
+            },
             desenho: function () {
                 canvasCtx.fillStyle = "ffffff";
                 canvasCtx.fillRect(this.x, this.y, this.largura, this.altura);
+
+                this._move()
             }
         }
 
@@ -76,6 +95,53 @@
             x: 300,
             y: 200,
             raio: 20,
+            velocidade: 10,
+            directionX: 1, //1 para direita -1 para esquerda
+            directionY: 1, //1 para baixo -1 para cima
+            _calcPosition: function () {
+                if ((this.y > campo.altura - this.raio && this.directionY > 0) || (this.y - this.raio <= 0 && this.directionY < 0)) {
+                    this.reverseY();
+                }
+                //verifica se humano fez ponto 
+                if (this.x > campo.largura - this.raio - raqueteDir.largura - gapX) {
+                    //verifica se y da bola esta com y da raquete dir
+                    if ((this.y + this.raio > raqueteDir.y) && (this.y - this.raio < raqueteDir.y + raqueteDir.altura)) {
+                        this.reverseX(); //se esta na extensao da raquete rebate
+                    } else {
+                        placar.increaseHuman()
+                        this._pointUp()
+                    }
+                }
+                //verifica se comp fez ponto 
+                if (this.x < 0 + this.raio + raqueteEsq.largura + gapX) {
+                    if ((this.y + this.raio > raqueteEsq.y) && (this.y - this.raio < raqueteEsq.y + raqueteEsq.altura)) {
+                        this.reverseX();
+                    } else {
+                        placar.increaseComputer()
+                        this._pointUp()
+                    }
+                }
+            },
+            reverseX: function () {
+                this.directionX *= -1 //recebe ele vezes -1
+            },
+            reverseY: function () {
+                this.directionY *= -1 //recebe ele vezes -1
+            },
+            _speedUp: function () {
+                this.velocidade += 2
+            },
+            _pointUp: function () { //volta bolinha pro centro
+                this._speedUp() //a cada ponto aumenta velocidade
+                raqueteDir.speedUp() //aumenta a velocidade do pc menos que da bola 
+                this.x = campo.largura / 2
+                this.y = campo.altura / 2
+
+            },
+            _move: function () { //funcoes internas costuma usar _ na frente
+                this.x += this.directionX * this.velocidade;
+                this.y += this.directionY * this.velocidade;
+            },
             desenho: function () {
                 canvasCtx.fillStyle = "#ffffff"
                 //arc(x central, y central, raio, 0, 2.0 * Math.PI (preencher de 0 a 2pi), false)
@@ -83,12 +149,21 @@
                 //como n tem fill de circulo entre begin e fill desenho a bola
                 canvasCtx.arc(this.x, this.y, this.raio, 0, 2 * Math.PI, false);
                 canvasCtx.fill()
+
+                this._calcPosition()
+                this._move();
             }
         }
 
         const placar = {
-            pontos_humano: 1,
-            pontos_computador: 2,
+            pontos_humano: 0,
+            pontos_computador: 0,
+            increaseHuman: function () {
+                this.pontos_humano++
+            },
+            increaseComputer: function () {
+                this.pontos_computador++
+            },
             desenho: function () {
                 //definindo a fonte
                 canvasCtx.font = "bold 72px Arial";
@@ -123,8 +198,38 @@
 
         }
 
+        //usa assim para animação ficar mais suave
+        window.animateFrame = (function () {
+            return (
+                window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame ||
+                function (callback) {
+                    return window.setTimeout(callback, 1000 / 60)
+                }
+            )
+        })()
+
+        function main() {
+            animateFrame(main)
+            draw()
+        }
+
         setup()
-        draw()
+        main()
+
+        //faz objeto mouse receber valores da posicao do mouse real 
+        canvasEl.addEventListener("mousemove", function (e) {
+            mouse.x = e.pageX
+            mouse.y = e.pageY
+        })
+        //draw
+
+        //window.setInterval(draw, 1000 / 60); //atualiza 60 vezes por segundo
+
+
 
     </script>
 </body>
